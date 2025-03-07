@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { TextField, Button } from "@mui/material";
-import { red } from "@mui/material/colors";
 
 interface Props {
   addTodo: (task: string) => void;

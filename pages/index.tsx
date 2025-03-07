@@ -7,20 +7,37 @@ import TodoForm from "../components/ToDoForm";
 import TodoList from "../components/ToDoList";
 import Auth from "../components/Auth";
 import { Todo } from "../types/todo";
+import { useRouter } from "next/router";
+
+
+const getJWTFromLocalStorage = () => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("jwt_token");
+  }
+  return null;
+};
 
 export default function Home() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [todos, setTodos] = useState<Todo[]>([]);
+  const [jwt, setJwt] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const router = useRouter();
 
-  // Load todos from localStorage on mount
   useEffect(() => {
     const storedTodos = localStorage.getItem("todos");
     if (storedTodos) {
       setTodos(JSON.parse(storedTodos));
     }
-  }, []);
 
-  // Save todos to localStorage on change
+    const storedJwt = getJWTFromLocalStorage();
+    if (storedJwt) {
+      setJwt(storedJwt);
+    }
+
+    setLoading(false);
+  }, [session]);
+
   useEffect(() => {
     localStorage.setItem("todos", JSON.stringify(todos));
   }, [todos]);
@@ -30,7 +47,6 @@ export default function Home() {
     setTodos([...todos, { id: Date.now(), task, completed: false }]);
   };
 
-  // Function to toggle task completion
   const toggleComplete = (id: number) => {
     setTodos(
       todos.map((todo) =>
@@ -44,27 +60,55 @@ export default function Home() {
     setTodos(todos.filter((todo) => todo.id !== id));
   };
 
+
+  const handleGoogleSignIn = () => {
+
+    if (!session) {
+      signIn("google", { callbackUrl: "/" });
+    }
+  };
+
+  // If still loading session or JWT, don't render app yet
+  if (loading || status === "loading") {
+    return (
+      <Container maxWidth="sm">
+        <Typography variant="h5">Loading...</Typography>
+      </Container>
+    );
+  }
+
+  if (!session && !jwt) {
+    router.push("/login");
+    return null; 
+  }
+
   return (
     <Container maxWidth="sm">
-      {/* Authentication UI */}
       <Auth />
 
-      {/* Show Sign-In Button if Not Logged In */}
-      {!session ? (
+      {/* Show sign-in page if not authenticated */}
+      {!session && !jwt ? (
         <Paper sx={{ padding: 3, mt: 3, textAlign: "center" }}>
           <Typography variant="h5">Please Sign In to Manage Your Tasks</Typography>
-          <Button variant="contained" color="error" onClick={() => signIn("google")} sx={{ mt: 2 }}>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleGoogleSignIn} // Trigger only if not logged in
+            sx={{ mt: 2 }}
+          >
             Sign In with Google
           </Button>
         </Paper>
       ) : (
         <Paper sx={{ padding: 3, mt: 3 }}>
           <Typography variant="h4" gutterBottom>
-            {session.user?.name}'s To-Do List
+            {session?.user?.name || "User"}'s To-Do List
           </Typography>
-          {/* Task Input Form */}
+
+          {/* Show Todos Form */}
           <TodoForm addTodo={addTodo} />
-          {/* Task List */}
+
+          {/* Show Todos List */}
           <TodoList todos={todos} toggleComplete={toggleComplete} removeTodo={removeTodo} />
         </Paper>
       )}

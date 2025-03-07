@@ -1,10 +1,21 @@
-"use client"; // Required for Next.js App Router
+"use client"; 
 
 import { signIn, signOut, useSession } from "next-auth/react";
 import { Button, Box, Typography, Avatar } from "@mui/material";
+import { useRouter } from "next/navigation";
 
 const Auth = () => {
   const { data: session } = useSession();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("jwt_token");
+    }
+  
+    await signOut({ redirect: false });
+    router.refresh();
+  };
 
   return (
     <Box display="flex" alignItems="center" justifyContent="space-between" padding={2}>
@@ -14,7 +25,7 @@ const Auth = () => {
             <Avatar src={session.user?.image || ""} alt="User Avatar" />
             <Typography variant="body1">Hello, {session.user?.name}!</Typography>
           </Box>
-          <Button variant="contained" color="secondary" onClick={() => signOut()}>
+          <Button variant="contained" color="error" onClick={handleSignOut}>
             Sign Out
           </Button>
         </>
